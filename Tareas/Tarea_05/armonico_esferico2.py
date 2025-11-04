@@ -1,7 +1,8 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import cm
-from mpl_toolkits.mplot3d import Axes3D
+import scipy as sp
+import math
 
 # Definir la grilla esférica
 theta = np.linspace(0, np.pi, 100)
@@ -20,16 +21,53 @@ def spherical_to_cartesian(r, theta, phi):
     z = r * np.cos(theta)
     return x, y, z
 
-# Armónicos esféricos para l=1 (orbitales p)
 # Combinaciones lineales que dan las funciones direccionales x, y, z
+def armonico_esferico(l, m, theta, phi):  # noqa: E741
+    """ Calcular los armónicos esféricos utilizando los polinomios de Legendre
+    
+    Y_l^m(θ, φ) = (-1)^m √[(2l+1)(l-|m|)! / (4π(l+|m|)!)] P_l^|m|(cos θ) e^(imφ)
+    
+    Args:
+        l (int): número cuántico de momento angular (l ≥ 0)
+        m (int): número cuántico magnético (-l ≤ m ≤ l)
+        theta (numpy.ndarray o float): ángulo polar [0, π]
+        phi (numpy.ndarray o float): ángulo azimutal [0, 2π]
+    
+    Returns:
+        numpy.ndarray (complejo): armónico esférico Y_l^m(θ, φ)
+    """
+    
+    # Validación
+    if abs(m) > l:
+        raise ValueError(f"Se requiere |m| ≤ l. Dado: m={m}, l={l}")
+    
+    # Polinomio asociado de Legendre P_l^|m|(cos θ)
+    # scipy.special.lpmv usa la convención (m, n, x)
+    legendre = sp.special.lpmv(m, l, np.cos(theta))
+    
+    # Factor de normalización (fase de Condon-Shortley incluida)
+    constant_factor = (-1) ** m * np.sqrt(
+        ((2 * l + 1) * math.factorial(l - m)) /
+        (4 * np.pi * math.factorial(l + m))
+    )
+    
+    # Parte angular compleja: e^(imφ)
+    exponential_factor = np.exp(1j * m * phi)
+    
+    # Armónico esférico completo (número complejo)
+    Y_lm = constant_factor * legendre * exponential_factor
+    
+    return Y_lm
 
+# Armónicos esféricos para l=1 (orbitales p)
 # p_z = Y_1^0 (proporcional a z)
-Y_1_0 = np.sqrt(3/(4*np.pi)) * z_coord
+#Y_1_0 = np.sqrt(3/(4*np.pi)) * z_coord
+Y_1_0 = armonico_esferico(1, 0, theta, phi)
 p_z = np.abs(Y_1_0)
 
 # p_x = combinación de Y_1^1 y Y_1^{-1} (proporcional a x)
-Y_1_1 = -np.sqrt(3/(8*np.pi)) * np.sin(theta) * np.exp(1j*phi)
-Y_1_m1 = np.sqrt(3/(8*np.pi)) * np.sin(theta) * np.exp(-1j*phi)
+Y_1_1 = armonico_esferico(1, 1, theta, phi)
+Y_1_m1 = armonico_esferico(1, -1, theta, phi)
 p_x = np.abs((Y_1_m1 - Y_1_1) / np.sqrt(2))
 
 # p_y = combinación de Y_1^1 y Y_1^{-1} (proporcional a y)
@@ -37,20 +75,20 @@ p_y = np.abs((Y_1_m1 + Y_1_1) / (1j*np.sqrt(2)))
 
 # Armónicos esféricos para l=2 (orbitales d)
 # d_z² (3z²-r²) proporcional a Y_2^0
-Y_2_0 = np.sqrt(5/(16*np.pi)) * (3*z_coord**2 - 1)
+Y_2_0 = armonico_esferico(2, 0, theta, phi)
 d_z2 = np.abs(Y_2_0)
 
 # d_xz proporcional a combinación de Y_2^1 y Y_2^{-1}
-Y_2_1 = -np.sqrt(15/(8*np.pi)) * np.sin(theta) * np.cos(theta) * np.exp(1j*phi)
-Y_2_m1 = np.sqrt(15/(8*np.pi)) * np.sin(theta) * np.cos(theta) * np.exp(-1j*phi)
+Y_2_1 = armonico_esferico(2, 1, theta, phi)
+Y_2_m1 = armonico_esferico(2, -1, theta, phi)
 d_xz = np.abs((Y_2_m1 - Y_2_1) / np.sqrt(2))
 
 # d_yz proporcional a combinación de Y_2^1 y Y_2^{-1}
 d_yz = np.abs((Y_2_m1 + Y_2_1) / (1j*np.sqrt(2)))
 
 # d_xy proporcional a combinación de Y_2^2 y Y_2^{-2}
-Y_2_2 = np.sqrt(15/(32*np.pi)) * np.sin(theta)**2 * np.exp(2j*phi)
-Y_2_m2 = np.sqrt(15/(32*np.pi)) * np.sin(theta)**2 * np.exp(-2j*phi)
+Y_2_2 = armonico_esferico(2, 2, theta, phi)
+Y_2_m2 = armonico_esferico(2, -2, theta, phi)
 d_xy = np.abs((Y_2_m2 + Y_2_2) / (1j*np.sqrt(2)))
 
 # d_x²-y² proporcional a combinación de Y_2^2 y Y_2^{-2}
@@ -131,10 +169,10 @@ plt.show()
 
 print("Figuras generadas:")
 print("\nPara l=1 (orbitales p):")
-print("- p_x: combinación lineal que da dependencia con x")
-print("- p_y: combinación lineal que da dependencia con y")
+print("- p_x: combinacion lineal que da dependencia con x")
+print("- p_y: combinacion lineal que da dependencia con y")
 print("- p_z: dependencia directa con z")
 print("\nPara l=2 (orbitales d):")
-print("- d_z²: dependencia con 3z²-r²")
+print("- d_z2: dependencia con 3z2-r2")
 print("- d_xz, d_yz, d_xy: dependencias con productos de coordenadas")
-print("- d_x²-y²: dependencia con x²-y²")
+print("- d_x2-y2: dependencia con x2-y2")
