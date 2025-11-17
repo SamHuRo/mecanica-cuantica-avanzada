@@ -177,7 +177,7 @@ def verificar_normalizacion(l, m):  # noqa: E741
 # Ejemplos de uso
 if __name__ == "__main__":
     # Definición número cuantico l
-    l = 2  # noqa: E741
+    l = 5  # noqa: E741
 
     # Definición del número cuantico m
     m = np.arange(0, l, 1)
